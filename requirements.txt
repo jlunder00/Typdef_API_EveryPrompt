@@ -1,0 +1,5 @@
+fastapi[all]
+uvicorn
+jwt
+sqlalchemy
+psycopg2
