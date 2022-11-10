@@ -1,11 +1,10 @@
 from fastapi import HTTPException, status, Security, FastAPI
 from fastapi.security import APIKeyHeader, APIKeyQuery
 from pydantic import BaseModel
+import subprocess
+import json
+import datetime, time
 
-
-class JSON_Input(BaseModel):
-    json:Dict
-    api_key:str
 
 # Define a list of valid API keys
 API_KEYS = [
@@ -39,6 +38,10 @@ def get_api_key(
         detail="Invalid or missing API Key",
     )
 
+class JSONInput(BaseModel):
+    schema_title: str = 'Item'
+    json_schema: dict
+    api_key: str = Security(get_api_key)
 
 # Define the application
 app = FastAPI(title="Example API")
@@ -51,8 +54,18 @@ def public():
 
 
 @app.post("/generate_typescript")
-def generate_typescript(api_key: str = Security(get_api_key)):
-
-    return f"Private Endpoint. API Key is: {api_key}"
+def generate_typescript(json_input: JSONInput):
+    #TODO: run jtd-codegen on inputted data, get inputted data
+     
+    json_string = json.dumps(json_input.json_schema)
+    with open ('./tmp/in/in.json', 'w') as fin:
+        fin.write(json_string)
+    # folder = str(time.time()) #TODO: make better tmp folder creation/deletion
+    with subprocess.Popen(["./lib/bin/jtd-codegen", "./tmp/in/in.json", "--root-name", "Item", "--typescript-out", "./tmp/"], stdout=subprocess.PIPE) as proc:
+        print(proc.stdout.read())
+    generated_typescript = ''
+    with open("./tmp/index.ts") as fin:
+         generated_typescript = '\n'.join(fin.readlines()[2:])
+    return {'typescript':generated_typescript} 
 
 
