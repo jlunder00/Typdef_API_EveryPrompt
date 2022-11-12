@@ -12,7 +12,6 @@ REDIS_PASS = os.environ['REDIS_PASS']
 API_KEYS = os.environ['EVERYPROMPT_API_KEYS'].split(':')
 redis_url = "redis://default:"+REDIS_PASS+"@fly-json-ts-api-redis.upstash.io"
 r = redis.Redis.from_url(redis_url)
-# r = redis.Redis(host="localhost",port=8888,db=0)
 
 # Define the name of query param to retrieve an API key from
 api_key_query = APIKeyQuery(name="api-key", auto_error=False)
@@ -58,6 +57,7 @@ app = FastAPI(title="JSON To TypeScript Converter")
 
 @app.post("/generate_typescript")
 async def generate_typescript(json_input: JSONInput):
+    #Generate typescript from json input
     try:
         get_api_key(json_input.api_key)
         json_string = json.dumps(json_input.json_schema)
