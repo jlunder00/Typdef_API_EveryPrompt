@@ -2,4 +2,5 @@ fastapi[all]
 uvicorn
 jwt
 sqlalchemy
-psycopg2
+redis
+psycopg2-binary
