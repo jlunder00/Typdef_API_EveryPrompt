@@ -7,14 +7,10 @@ import time
 import redis
 from pathlib import Path
 import os, shutil
-import logging
 
 REDIS_PASS = os.environ['REDIS_PASS']
 API_KEYS = os.environ['EVERYPROMPT_API_KEYS'].split(':')
 redis_url = "redis://default:"+REDIS_PASS+"@fly-json-ts-api-redis.upstash.io"
-l = logging.getLogger("uvicorn")
-l.info(redis_url)
-l.info(API_KEYS)
 r = redis.Redis.from_url(redis_url)
 # r = redis.Redis(host="localhost",port=8888,db=0)
 
@@ -37,9 +33,6 @@ def get_api_key(
 ):
     """Retrieve & validate an API key from the query parameters or HTTP header"""
     # If the API Key is present as a query param & is valid, return it
-    l.info(api_key_query)
-    l.info(API_KEYS)
-    l.info(api_key_query in API_KEYS)
     if api_key_query in API_KEYS:
         return api_key_query
 
@@ -71,9 +64,7 @@ async def generate_typescript(json_input: JSONInput):
         title = json_input.schema_title
         cached_result = r.get(json_string)
         if cached_result is not None:
-            l.info("CACHE USED")
             return {'typescript':cached_result}
-        l.info("CACHE NOT USED")
         t = str(time.time())
         infile = Path('/app/src/tmp/in/'+title+'-'+t+'.json')
         with open(str(infile), 'w') as fin:
