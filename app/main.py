@@ -8,10 +8,9 @@ import redis
 from pathlib import Path
 import os, shutil
 
-REDIS_PASS = os.environ['REDIS_PASS']
 API_KEYS = os.environ['EVERYPROMPT_API_KEYS'].split(':')
-redis_url = "redis://default:"+REDIS_PASS+"@fly-json-ts-api-redis.upstash.io"
-r = redis.Redis.from_url(redis_url)
+# redis_url = "redis://default:"+REDIS_PASS+"@fly-json-ts-api-redis.upstash.io"
+r = redis.Redis.from_url(os.environ['REDIS_URL'])
 
 # Define the name of query param to retrieve an API key from
 api_key_query = APIKeyQuery(name="api-key", auto_error=False)
