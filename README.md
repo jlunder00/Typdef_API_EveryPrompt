@@ -36,4 +36,4 @@
         * ENV EVERYPROMPT_API_KEYS=key1fe13251d212c:key22e213cfd323cdd21
     - Build with `docker build ./` from the root of the repo
     - Run with `docker run -p 8000:8000 <image name or id>`
-    - Access with `curl https://localhost:8000/generate_typescript ...`
+    - Access with `curl -X POST https://localhost:8000/generate_typescript ...`
