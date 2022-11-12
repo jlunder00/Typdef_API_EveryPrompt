@@ -3,14 +3,20 @@ from fastapi.security import APIKeyHeader, APIKeyQuery
 from pydantic import BaseModel
 import subprocess
 import json
-import datetime, time
+import time
 import redis
 from pathlib import Path
-import os
+import os, shutil
+import logging
 
-r = redis.Redis(host='localhost', port=8888, db=0)
-
+REDIS_PASS = os.environ['REDIS_PASS']
 API_KEYS = os.environ['EVERYPROMPT_API_KEYS'].split(':')
+redis_url = "redis://default:"+REDIS_PASS+"@fly-json-ts-api-redis.upstash.io"
+l = logging.getLogger("uvicorn")
+l.info(redis_url)
+l.info(API_KEYS)
+r = redis.Redis.from_url(redis_url)
+# r = redis.Redis(host="localhost",port=8888,db=0)
 
 # Define the name of query param to retrieve an API key from
 api_key_query = APIKeyQuery(name="api-key", auto_error=False)
@@ -31,6 +37,9 @@ def get_api_key(
 ):
     """Retrieve & validate an API key from the query parameters or HTTP header"""
     # If the API Key is present as a query param & is valid, return it
+    l.info(api_key_query)
+    l.info(API_KEYS)
+    l.info(api_key_query in API_KEYS)
     if api_key_query in API_KEYS:
         return api_key_query
 
@@ -56,22 +65,34 @@ app = FastAPI(title="JSON To TypeScript Converter")
 
 @app.post("/generate_typescript")
 async def generate_typescript(json_input: JSONInput):
-    json_string = json.dumps(json_input.json_schema)
-    title = json_input.schema_title
-    cached_result = r.get(json_string)
-    if cached_result is not None:
-        return {'typescript':cached_result} 
-    t = str(time.time())
-    infile = Path('./tmp/in/'+title+'-'+t+'.json')
-    with open(str(infile), 'w') as fin:
-        fin.write(json_string)
-    outfile = Path('./tmp/out/'+title+'-'+t+'.ts')
-    subprocess.Popen(["./lib/bin/jtd-codegen", str(infile), "--root-name", str(json_input.schema_title), "--typescript-out", str(outfile)])
-    outfile.unlink()
-    generated_typescript = ''
-    with open(str(outfile), 'r') as fin:
-        generated_typescript = '\n'.join(fin.readlines()[2:])
-        r.set(json_string, generated_typescript) 
-    return {'typescript':generated_typescript} 
+    try:
+        get_api_key(json_input.api_key)
+        json_string = json.dumps(json_input.json_schema)
+        title = json_input.schema_title
+        cached_result = r.get(json_string)
+        if cached_result is not None:
+            l.info("CACHE USED")
+            return {'typescript':cached_result}
+        l.info("CACHE NOT USED")
+        t = str(time.time())
+        infile = Path('/app/src/tmp/in/'+title+'-'+t+'.json')
+        with open(str(infile), 'w') as fin:
+            fin.write(json_string)
+        outdir = Path('/app/src/tmp/out/'+title+'-'+t+'/')
+        if not outdir.exists():
+            outdir.mkdir(parents=True)
+        cmd = ["./lib/bin/jtd-codegen", str(infile), "--root-name", str(json_input.schema_title), "--typescript-out", str(outdir)]
+        process = subprocess.Popen(cmd)
+        process.wait()
+        outfile = outdir/'index.ts'
+        generated_typescript = ''
+        with open(str(outfile), 'r') as fin:
+            generated_typescript = '\n'.join(fin.readlines()[2:])
+            r.set(json_string, generated_typescript)
+        shutil.rmtree(outdir)
+        return {'typescript':generated_typescript}
+    except Exception:
+        raise Exception
+        
 
 
